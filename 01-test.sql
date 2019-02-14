@@ -1,0 +1,3 @@
+SELECT T.A
+FROM T
+WHERE T.A=1;
