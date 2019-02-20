@@ -34,6 +34,15 @@ namespace db{
 	struct where	
 		: pegtl::string< 'W', 'H', 'E', 'R', 'E', ' ' > {};
 
+	struct and_
+		: pegtl::string< 'A', 'N', 'D', ' ' > {};
+	
+	struct or_
+		: pegtl::string< 'O', 'R', ' ' > {};
+
+	struct relation
+		: pegtl::sor< pegtl::one< '<' >, pegtl::one< '=' >, pegtl::one< '>' > > {};
+
 	struct attrname
 		: pegtl::seq< pegtl::plus< pegtl::alpha >, pegtl::one< '.' >, pegtl::plus< pegtl::alpha > > {}; 
 
@@ -44,28 +53,31 @@ namespace db{
 		: pegtl::seq< pegtl::one< '"' >, pegtl::plus< pegtl::alpha >, pegtl::one< '"' > > {};
 
 	struct selparams
-		: pegtl::seq< attrname, pegtl::star< pegtl::one< ',' >, attrname > > {};
+		: pegtl::list< attrname, pegtl::one< ',' > > {};
 
 	struct frparams
-		: pegtl::seq< tablename, pegtl::star< pegtl::one< ',' >, tablename > > {};
+		: pegtl::list< tablename, pegtl::one< ',' > > {};
 
-	struct predicate;
+
 	struct whparams;
-	struct atomic_whparam;
-	struct bracket_whparam;
-	struct relation;
 
 	struct predicate
 		: pegtl::seq< attrname, relation, pegtl::sor< attrname, double_::grammar, word > > {};
 
-	struct relation
-		: pegtl::sor< pegtl::one< '<' >, pegtl::one< '=' >, pegtl::one< '>' > > {};
+	struct bracket_whparam
+		: pegtl::if_must< pegtl::one< '(' >, whparams, pegtl::one< ')' > > {};
+
+	struct atomic_whparam
+		: pegtl::sor< predicate, bracket_whparam > {};
+
+	struct whparams
+		: pegtl::list< atomic_whparam, pegtl::sor< and_, or_ > > {};
 
 	struct basic_query
 		: pegtl::seq< select, selparams, pegtl::one< ' ' >, from, frparams, pegtl::one< ' ' > > {};
 	
 	struct query
-		: pegtl::seq< basic_query, predicate, pegtl::one< ';' > > {};
+		: pegtl::if_must< pegtl::seq< basic_query, whparams, pegtl::one< ';' > > > {};
 
 
 //------------------ACTIONS-----------------//
@@ -104,7 +116,7 @@ int main( int argc, char* argv[] )
 	pegtl::read_input in( argv[ 1 ] );
 	pegtl::parse< db::query, db::action >(in, q);
 
-	//q.print();
+	q.print();
 
 	return 0;
 }
